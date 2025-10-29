@@ -43,6 +43,7 @@ Models (LVLMs). With Visual-ARFT, open-source LVLMs gain the ability to browse w
 </a>  -->
 
 ## 📢 News
+- 🚀 [10/29/2025] Now, <a href="https://github.com/open-compass/VLMEvalKit/tree/main">VLMEvalKit</a> supports the evaluation of MAT-Bench.
 - 🚀 [05/20/2025] We release our model, datasets, and MAT benchmark on huggingface 🤗<a href="https://huggingface.co/collections/laolao77/visual-arft-682c601d0e35ac6470adfe9f">Huggingface Collection</a>.
 - 🚀 [05/20/2025] We release our training and evaluation code.
 - 🚀 [05/20/2025] We release **Viual-ARFT** repository.
