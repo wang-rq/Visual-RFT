@@ -52,6 +52,14 @@ class GRPOScriptArguments(ScriptArguments):
     )
 
 
+@dataclass
+class GRPOClassificationConfig(GRPOConfig):
+    max_prompt_length: Optional[int] = field(
+        default=1024,
+        metadata={"help": "Maximum number of prompt tokens kept before generation."},
+    )
+
+
 def accuracy_reward(completions, solution, **kwargs):
     """Reward function that checks if the completion is correct using either symbolic verification or exact string matching."""
     contents = [completion[0]["content"] for completion in completions]
@@ -146,6 +154,12 @@ def main(script_args, training_args, model_args):
         return {
             "prompt": [
                 {
+                    "role": "system",
+                    "content": [
+                        {"type": "text", "text": SYSTEM_PROMPT},
+                    ],
+                },
+                {
                     "role": "user",
                     "content": [
                         {"type": "image"},
@@ -194,6 +208,6 @@ def main(script_args, training_args, model_args):
 
 
 if __name__ == "__main__":
-    parser = TrlParser((GRPOScriptArguments, GRPOConfig, ModelConfig))
+    parser = TrlParser((GRPOScriptArguments, GRPOClassificationConfig, ModelConfig))
     script_args, training_args, model_args = parser.parse_args_and_config()
     main(script_args, training_args, model_args)

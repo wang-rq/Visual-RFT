@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+
+share_data/
+share_models/
+classification/results/
