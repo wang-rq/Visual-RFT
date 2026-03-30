@@ -14,7 +14,7 @@ try:
 except ImportError:
     AutoModelForImageTextToText = None
 
-from galaxy_rft_common import (
+from galaxy_rft_structured_common import (
     CLASS_NAMES,
     SYSTEM_PROMPT,
     build_problem,
@@ -99,13 +99,13 @@ def save_error_analysis(predictions, output_prefix: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Evaluate a Visual-RFT-style galaxy classification model.")
+    parser = argparse.ArgumentParser(description="Evaluate a structured-think Visual-RFT galaxy classification model.")
     parser.add_argument("--csv_path", required=True)
     parser.add_argument("--model_name_or_path", required=True)
     parser.add_argument("--processor_name_or_path", default=None)
     parser.add_argument("--output_path", required=True)
     parser.add_argument("--max_samples", type=int, default=None)
-    parser.add_argument("--max_new_tokens", type=int, default=256)
+    parser.add_argument("--max_new_tokens", type=int, default=128)
     parser.add_argument("--dtype", default="bfloat16", choices=["bfloat16", "float16", "float32"])
     parser.add_argument("--attn_implementation", default="sdpa")
     parser.add_argument("--num_votes", type=int, default=3)

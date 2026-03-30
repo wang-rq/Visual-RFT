@@ -30,23 +30,113 @@ CLASS_DEFINITIONS = {
     "edge-on galaxy with bulge": "Disk galaxies viewed edge-on with a visible central bulge.",
 }
 
-REASONING_BY_CLASS = {
-    "disturbed galaxies": "The morphology is asymmetric and irregular, without a clean smooth profile or an orderly disk structure, which supports a disturbed classification.",
-    "merging galaxies": "Multiple interacting components and strong distortions are visible, indicating an ongoing merger rather than a single undisturbed galaxy.",
-    "round smooth galaxy": "The galaxy has a smooth light distribution and a nearly round outline, with no visible bar or spiral arms.",
-    "in-between round smooth galaxy": "The galaxy is smooth overall and moderately elongated, placing it between round and strongly cigar-shaped smooth morphologies.",
-    "cigar shaped smooth galaxy": "The galaxy is smooth and clearly elongated into a cigar-like shape, without obvious spiral or bar structure.",
-    "barred spiral galaxy": "A disk is visible along with spiral structure, and there is a central bar-like feature crossing the inner region.",
-    "unbarred tight spiral galaxy": "The galaxy shows spiral structure without a central bar, and the arms are relatively tightly wound.",
-    "unbarred loose spiral galaxy": "The galaxy shows spiral structure without a central bar, and the arms are relatively loose and open.",
-    "edge-on galaxy without bulge": "The galaxy is viewed edge-on and the central region lacks a prominent bulge.",
-    "edge-on galaxy with bulge": "The galaxy is viewed edge-on and the central region contains a noticeable bulge.",
+STRUCTURED_FIELDS = [
+    "smoothness",
+    "shape",
+    "spiral_arms",
+    "bar",
+    "edge_on",
+    "bulge",
+    "interaction",
+]
+
+STRUCTURED_LABELS = {
+    "disturbed galaxies": {
+        "smoothness": "disturbed",
+        "shape": "irregular",
+        "spiral_arms": "unclear",
+        "bar": "unclear",
+        "edge_on": "no",
+        "bulge": "unclear",
+        "interaction": "disturbed",
+    },
+    "merging galaxies": {
+        "smoothness": "disturbed",
+        "shape": "irregular",
+        "spiral_arms": "unclear",
+        "bar": "unclear",
+        "edge_on": "no",
+        "bulge": "unclear",
+        "interaction": "merging",
+    },
+    "round smooth galaxy": {
+        "smoothness": "smooth",
+        "shape": "round",
+        "spiral_arms": "none",
+        "bar": "no",
+        "edge_on": "no",
+        "bulge": "not_applicable",
+        "interaction": "none",
+    },
+    "in-between round smooth galaxy": {
+        "smoothness": "smooth",
+        "shape": "intermediate",
+        "spiral_arms": "none",
+        "bar": "no",
+        "edge_on": "no",
+        "bulge": "not_applicable",
+        "interaction": "none",
+    },
+    "cigar shaped smooth galaxy": {
+        "smoothness": "smooth",
+        "shape": "elongated",
+        "spiral_arms": "none",
+        "bar": "no",
+        "edge_on": "no",
+        "bulge": "not_applicable",
+        "interaction": "none",
+    },
+    "barred spiral galaxy": {
+        "smoothness": "disk",
+        "shape": "face_on",
+        "spiral_arms": "visible",
+        "bar": "yes",
+        "edge_on": "no",
+        "bulge": "visible",
+        "interaction": "none",
+    },
+    "unbarred tight spiral galaxy": {
+        "smoothness": "disk",
+        "shape": "face_on",
+        "spiral_arms": "tight",
+        "bar": "no",
+        "edge_on": "no",
+        "bulge": "visible",
+        "interaction": "none",
+    },
+    "unbarred loose spiral galaxy": {
+        "smoothness": "disk",
+        "shape": "face_on",
+        "spiral_arms": "loose",
+        "bar": "no",
+        "edge_on": "no",
+        "bulge": "visible",
+        "interaction": "none",
+    },
+    "edge-on galaxy without bulge": {
+        "smoothness": "disk",
+        "shape": "edge_on_disk",
+        "spiral_arms": "not_visible",
+        "bar": "not_visible",
+        "edge_on": "yes",
+        "bulge": "no",
+        "interaction": "none",
+    },
+    "edge-on galaxy with bulge": {
+        "smoothness": "disk",
+        "shape": "edge_on_disk",
+        "spiral_arms": "not_visible",
+        "bar": "not_visible",
+        "edge_on": "yes",
+        "bulge": "yes",
+        "interaction": "none",
+    },
 }
 
 SYSTEM_PROMPT = (
     "You are an astronomy assistant for galaxy morphology classification. "
-    "Carefully inspect the galaxy image, compare it against the allowed label set, reason briefly, "
-    "and answer with exactly one <think>...</think><answer>...</answer> pair."
+    "Inspect the galaxy image and respond with a structured visual checklist inside <think> using one key=value pair per line, "
+    "followed by exactly one final label inside <answer>."
 )
 
 PROMPT_VARIANTS = [
@@ -56,8 +146,8 @@ PROMPT_VARIANTS = [
 ]
 
 REASONING_HINTS = [
-    "Pay attention to smoothness, elongation, bars, spiral arms, edge-on orientation, and merger signatures.",
-    "Base the decision on visible morphology such as roundness, edge-on disk shape, bar structure, arm winding, and disturbances.",
+    "Pay attention to smoothness, elongation, bars, spiral arms, edge-on orientation, bulge prominence, and merger signatures.",
+    "Base the decision on visible morphology such as roundness, edge-on disk shape, bar structure, arm winding, bulge visibility, and disturbances.",
     "Focus on whether the galaxy is smooth, edge-on, barred, spiral, loosely or tightly wound, disturbed, or merging.",
 ]
 
@@ -97,13 +187,22 @@ def class_list_text() -> str:
     return "\n".join(f"- {label}: {CLASS_DEFINITIONS[label]}" for label in CLASS_NAMES)
 
 
+def structured_template_text() -> str:
+    return "\n".join(f"{field}=..." for field in STRUCTURED_FIELDS)
+
+
+def structured_think_text(label: str) -> str:
+    values = STRUCTURED_LABELS[canonical_label(label)]
+    return "\n".join(f"{field}={values[field]}" for field in STRUCTURED_FIELDS)
+
+
 def few_shot_text() -> str:
     rows = []
     for idx, (desc, label) in enumerate(FEW_SHOT_EXAMPLES, start=1):
         rows.append(
             f"Example {idx}\n"
             f"Observation: {desc}\n"
-            f"Answer: <think>{REASONING_BY_CLASS[label]}</think><answer>{label}</answer>"
+            f"Answer: <think>\n{structured_think_text(label)}\n</think><answer>{label}</answer>"
         )
     return "\n\n".join(rows)
 
@@ -116,22 +215,21 @@ def build_problem(variant_index: int = 0, include_definitions: bool = True, incl
         parts.append("Allowed labels:\n" + class_list_text())
     else:
         parts.append("Allowed labels:\n" + "\n".join(f"- {label}" for label in CLASS_NAMES))
+    parts.append("Structured checklist format inside <think>:\n" + structured_template_text())
     parts.append(hint)
     if include_few_shot:
         parts.append("Reference examples:\n" + few_shot_text())
     parts.append(
-        "Write a short visual rationale in <think>...</think> and then output exactly one final label in "
-        "<answer>...</answer>. Do not output any label that is not in the allowed set."
+        "Inside <think>, write exactly one key=value pair per line using the checklist fields above. "
+        "Then output exactly one final label in <answer>. Do not output any label that is not in the allowed set."
     )
     return "\n\n".join(parts)
 
 
-def build_solution(label: str, reasoning_style: int = 0) -> str:
+def build_solution(label: str) -> str:
     normalized = canonical_label(label)
-    reasoning = REASONING_BY_CLASS[normalized]
-    if reasoning_style % 2 == 1:
-        reasoning = reasoning.replace("The galaxy", "This galaxy")
-    return f"<think>{reasoning}</think><answer>{normalized}</answer>"
+    think_block = structured_think_text(normalized)
+    return f"<think>\n{think_block}\n</think><answer>{normalized}</answer>"
 
 
 def extract_answer(text: str) -> str:

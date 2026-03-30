@@ -8,7 +8,7 @@ from copy import deepcopy
 
 from datasets import Dataset, DatasetDict, Image
 
-from galaxy_rft_common import (
+from galaxy_rft_structured_common import (
     CLASS_NAMES,
     build_problem,
     build_sft_messages,
@@ -33,7 +33,10 @@ def build_augmented_records(base_record: dict, split_name: str, augment_train: b
     if split_name != "train" or not augment_train:
         return records
 
-    for aug_name, suffix in [("crop_center", "Focus on the central structure before deciding."), ("crop_zoom", "Inspect the inner morphology and arm/bar structure carefully.")]:
+    for aug_name, suffix in [
+        ("crop_center", "Focus on the central structure before deciding."),
+        ("crop_zoom", "Inspect the inner morphology and arm/bar structure carefully."),
+    ]:
         aug_record = deepcopy(base_record)
         aug_record["augmentation"] = aug_name
         aug_record["problem"] = aug_record["problem"] + "\n\n" + suffix
@@ -65,7 +68,7 @@ def build_split(csv_path: str, split_name: str, max_samples: int | None, seed: i
         prompt_index = prompt_indices[len(records) % len(prompt_indices)] if prompt_indices else 0
         include_few_shot = split_name == "train" and (len(records) % 3 == 0)
         problem = build_problem(variant_index=prompt_index, include_definitions=True, include_few_shot=include_few_shot)
-        solution = build_solution(label, reasoning_style=len(records) % 2)
+        solution = build_solution(label)
         base_record = {
             "image": image_path,
             "problem": problem,
@@ -76,21 +79,16 @@ def build_split(csv_path: str, split_name: str, max_samples: int | None, seed: i
             "augmentation": "none",
             "messages": build_sft_messages(image_path, problem, solution),
         }
-        records.extend(
-            build_augmented_records(base_record, split_name=split_name, augment_train=augment_train)
-        )
+        records.extend(build_augmented_records(base_record, split_name=split_name, augment_train=augment_train))
 
     dataset = Dataset.from_list(records).cast_column("image", Image())
     label_counts = Counter(item["caption"] for item in records)
-    print(
-        f"[{split_name}] kept {len(records)} samples from {csv_path}; "
-        f"skipped {skipped} rows."
-    )
+    print(f"[{split_name}] kept {len(records)} samples from {csv_path}; skipped {skipped} rows.")
     return dataset, label_counts, records
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Build a Visual-RFT DatasetDict for galaxy morphology classification.")
+    parser = argparse.ArgumentParser(description="Build a structured-think Visual-RFT DatasetDict for galaxy morphology classification.")
     parser.add_argument("--train_csv", required=True)
     parser.add_argument("--test_csv", required=True)
     parser.add_argument("--output_dir", required=True)
@@ -121,6 +119,7 @@ def main():
         "train_label_counts": dict(train_counts),
         "test_label_counts": dict(test_counts),
         "augment_train": args.augment_train,
+        "reasoning_format": "structured_key_value",
     }
     metadata_path = os.path.join(args.output_dir, "metadata.json")
     with open(metadata_path, "w", encoding="utf-8") as handle:
